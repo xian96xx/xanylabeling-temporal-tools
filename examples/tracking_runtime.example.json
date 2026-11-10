@@ -1,0 +1,6 @@
+{
+  "python": "python",
+  "checkpoint": "models/sam2.1_hiera_small.pt",
+  "config": "configs/sam2.1/sam2.1_hiera_s.yaml",
+  "device": "auto"
+}
