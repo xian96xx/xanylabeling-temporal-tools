@@ -1,38 +1,56 @@
-# 接入 X-AnyLabeling 4.0.0-beta.7
+# 接入 X-AnyLabeling v4.0.0-beta.7
 
-本仓库不附带上游 `label_widget.py`（约 300 KB）。区间平滑和 AI 补齐的计算在 `xal_temporal` 里，界面在 `xal_temporal.qt`。上游主窗口只需要两个按钮和两次调用。
-
-固定版本：[X-AnyLabeling v4.0.0-beta.7](https://github.com/CVHub520/X-AnyLabeling/releases/tag/v4.0.0-beta.7)。补丁按该标签的 `anylabeling/views/labeling/label_widget.py` 生成。
+支持的接法是整份补丁，不是只加两个按钮。补丁相对标签 `v4.0.0-beta.7` 的 `label_widget.py`、`widgets/__init__.py`、`app_info.py`，并带上分叉实际 import 的新文件。
 
 ```bash
 git clone --branch v4.0.0-beta.7 --depth 1 https://github.com/CVHub520/X-AnyLabeling.git
 cd X-AnyLabeling
+patch -p1 --dry-run < /path/to/xal-temporal/integration/x-anylabeling-v4.0.0-beta.7-temporal.patch
 patch -p1 < /path/to/xal-temporal/integration/x-anylabeling-v4.0.0-beta.7-temporal.patch
-pip install -e /path/to/xal-temporal
-pip install "PyQt6>=6.6"
 ```
 
-补丁做两件事：
+`patch -p1 --dry-run` 已在该标签的干净检出上通过。
 
-1. 在标注说明下方加「区间平滑」和「AI 补齐」按钮。
-2. 增加 `open_temporal_smoothing` / `open_temporal_tracking`，转调 `xal_temporal.integration`。
+## 补丁里的行为
 
-标注路径沿用上游规则：与图片同名的 `.json`，若设置了 `output_dir` 则写到该目录。不依赖后续版本里才有的私有辅助函数。
+功能说明见 [`docs/CUSTOM_VIDEO_FEATURES_CN.md`](../docs/CUSTOM_VIDEO_FEATURES_CN.md)。清单：
 
-AI 补齐还需要一份运行配置，放在环境变量 `XAL_TEMPORAL_HOME`（默认当前工作目录）下：
+1. 同级文件夹导航（名称、复制、上一个/下一个、Alt+↑ / Alt+↓）
+2. 主界面 BBX 线宽
+3. 所有帧 80% 显示缩放
+4. 区间平滑
+5. AI 补齐
+6. 缺失框继承
+7. 后续 N 帧矩形同步
+8. 对象勾选作用于整个视频目录（只影响显示）
+9. 删除从当前帧传播到结尾，而不是整段视频
+10. 画框时空格平移提示
+11. 图像分类入口，以及视频分类入口
+12. 窗口标题后缀 `[区间平滑测试版]`
 
-```text
-runtime/tracking_runtime.json
-```
+区间平滑和 AI 补齐的源文件按分叉原来的路径放进树里：
 
-字段见 `examples/tracking_runtime.example.json`。`python` 是装有 PyTorch 和 SAM 2 的解释器，`checkpoint` 指向你自己下载的 `sam2.1_hiera_small.pt`。本仓库不包含权重。未配置时，区间平滑仍可使用，打开 AI 补齐会提示环境未就绪。
+- `anylabeling/views/labeling/temporal_smoothing.py`
+- `anylabeling/views/labeling/temporal_tracking.py`
+- `anylabeling/views/labeling/temporal_tracking_masks.py`
+- `anylabeling/views/labeling/widgets/temporal_smoothing_dialog.py`
+- `anylabeling/views/labeling/widgets/temporal_tracking_dialog.py`
+- `tools/temporal_tracking_*.py`
 
-会话、提示点和涂抹缓存在 `$XAL_TEMPORAL_HOME/runtime/`，不写进图片目录。应用到标注时仍在标注目录生成 `.temporal_smoothing_backups` 或 `.temporal_tracking_backups`。
+`xal_temporal` 包是同一套平滑和跟踪逻辑的可测试副本（导入已改成包内路径，运行时目录用 `XAL_TEMPORAL_HOME`）。补丁里的副本保持分叉原来的 `tools.` 导入和 `PROJECT_ROOT`，这样和 `label_widget.py` 里的调用一致。
 
-## 这个补丁不包含的本地改动
+## 视频分类文件从哪来
 
-原先那份完整 `label_widget.py` 里还有文件夹切换、80% 缩放、缺失框继承、后续 N 帧同步等改动。它们和这两项功能绑在同一个 300 KB 文件里，没有单独的可测试模块，因此没有放进本仓库。若要上游那些行为，需要对照 v4.0.0-beta.7 另做补丁。
+`widgets/__init__.py` 增加了 `VideoClassifierDialog`。v4.0.0-beta.7 和上传的压缩包里都没有这个模块。补丁附带的是上游 **v4.0.0-beta.8** 的 `video_classifier/` 与 `widgets/video_classifier_dialog.py`，未改内容。没有它们，打过补丁的 `label_widget` 无法导入。
+
+## AI 权重
+
+补丁不包含 `.pt`。AI 补齐仍读取运行目录下的 `runtime/tracking_runtime.json`，示例见 `examples/tracking_runtime.example.json`。
+
+## 只想在较新的 label_widget 上挂两个按钮
+
+`xal_temporal.integration.open_temporal_smoothing` / `open_temporal_tracking` 只打开这两个对话框。它们不包含文件夹导航、80% 缩放、缺失框继承或 N 帧同步。那些行为只在这份完整补丁里。
 
 ## English
 
-Pin X-AnyLabeling at tag `v4.0.0-beta.7`, apply `x-anylabeling-v4.0.0-beta.7-temporal.patch`, and install this package with PyQt6. The patch adds two buttons and delegates to `xal_temporal.integration`. SAM 2.1 Small is optional: point `runtime/tracking_runtime.json` at a local checkpoint. Do not commit weights.
+Apply `x-anylabeling-v4.0.0-beta.7-temporal.patch` with `patch -p1` on a clean `v4.0.0-beta.7` tree. It is the full fork of `label_widget.py`, plus `widgets/__init__.py`, `app_info.py`, the temporal modules at their original paths, and the video-classifier package copied unchanged from upstream `v4.0.0-beta.8` (required by the fork's import, absent from beta.7 and from the upload). The feature list is in `docs/CUSTOM_VIDEO_FEATURES_CN.md`. `xal_temporal` remains the importable, tested copy of smoothing and tracking only.

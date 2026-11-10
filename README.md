@@ -1,13 +1,23 @@
 # 视频框区间平滑与 AI 补齐
 
-在 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)（CVHub，GPL-3.0）里给**水平矩形**视频标注加两件事：
+在 [X-AnyLabeling](https://github.com/CVHub520/X-AnyLabeling)（CVHub，GPL-3.0）v4.0.0-beta.7 上的整套视频标注改动。平滑和 AI 补齐的纯计算在 `xal_temporal` 里，不依赖界面和 GPU。界面上的全部行为在一份补丁里，对照的是该标签的 `label_widget.py`，见 [`integration/INTEGRATION.md`](integration/INTEGRATION.md) 和 [`docs/CUSTOM_VIDEO_FEATURES_CN.md`](docs/CUSTOM_VIDEO_FEATURES_CN.md)。
 
-- **区间平滑**：不看像素。用你确认过的首尾和中间关键帧，对已有框做有界去抖或插值。
-- **AI 补齐**：可选。用 SAM 2.1 视频传播，从人工关键帧补中间帧。没有权重时整段跳过，平滑不受影响。
+补丁包含的行为：
 
-纯计算（平滑、插值、框/掩码几何、分块缓存、带备份的原子写入）不依赖界面和 GPU，可以用 pytest 单独测。
+1. 同级文件夹导航（名称、复制、上一个/下一个、Alt+↑ / Alt+↓）
+2. 主界面 BBX 线宽
+3. 所有帧 80% 显示缩放（不改原图和坐标）
+4. 区间平滑
+5. AI 补齐（可选 SAM 2.1）
+6. 缺失框继承
+7. 后续 N 帧矩形同步
+8. 对象勾选作用于整个视频目录（只影响显示，不删 JSON）
+9. 删除从当前帧传播到结尾
+10. 画框时空格平移提示
+11. 图像分类入口，以及视频分类入口
+12. 窗口标题后缀 `[区间平滑测试版]`
 
-本仓库**不**附带上游约 300 KB 的 `label_widget.py`。接入方式是一份针对标签 `v4.0.0-beta.7` 的小补丁，见 `integration/`。
+视频分类模块来自上游 v4.0.0-beta.8：beta.7 和上传的压缩包都没有这些文件，但分叉会导入它们。补丁原样附带，未改内容。原先笔记里的 JSON 修复脚本没有出现在上传文件中，因此不在补丁里。
 
 ## 区间平滑
 
@@ -45,11 +55,12 @@ pip install -e ".[gui]"
 pip install -e ".[dev]"
 ```
 
-X-AnyLabeling 请固定在 **v4.0.0-beta.7**。补丁说明在 [`integration/INTEGRATION.md`](integration/INTEGRATION.md)：
+X-AnyLabeling 请固定在 **v4.0.0-beta.7**。在该检出上打完整补丁：
 
 ```bash
 git clone --branch v4.0.0-beta.7 --depth 1 https://github.com/CVHub520/X-AnyLabeling.git
 cd X-AnyLabeling
+patch -p1 --dry-run < /path/to/this/repo/integration/x-anylabeling-v4.0.0-beta.7-temporal.patch
 patch -p1 < /path/to/this/repo/integration/x-anylabeling-v4.0.0-beta.7-temporal.patch
 ```
 
@@ -153,9 +164,11 @@ GitHub Actions（`.github/workflows/tests.yml`）在 Python 3.11 和 3.12 上跑
 
 ## English
 
-Interval smoothing and optional SAM 2.1 gap filling for horizontal video boxes in X-AnyLabeling 4.0.0-beta.7. Smoothing never looks at pixels: confirmed keyframes stay fixed, other edges move only inside a pixel limit, and nothing is written until preview. Apply is an atomic replace with a hashed backup and undo. AI fill is a separate process. It does not run without a local SAM 2.1 Small checkpoint, and it does not mark predictions as human keyframes.
+The supported X-AnyLabeling integration is the full fork patch `integration/x-anylabeling-v4.0.0-beta.7-temporal.patch` against tag `v4.0.0-beta.7`, not a two-button stub. It includes sibling-folder navigation, main-window box line width, 80% zoom for every frame, interval smoothing, optional SAM 2.1 gap filling, missing-box inherit, N-frame box sync, per-video visibility checkboxes, delete-through-end, a space-to-pan hint, image and video classifier entries, and the window-title suffix. The video-classifier package is copied unchanged from upstream `v4.0.0-beta.8` because the fork imports it and beta.7 does not ship it. `xal_temporal` is the tested library for smoothing and tracking only.
 
-Install with `pip install -e .` (add `[gui]` or `[dev]` for PyQt6). Apply `integration/x-anylabeling-v4.0.0-beta.7-temporal.patch` to a checkout of tag `v4.0.0-beta.7`. Do not commit weights.
+Smoothing never looks at pixels: confirmed keyframes stay fixed, other edges move only inside a pixel limit, and nothing is written until preview. Apply is an atomic replace with a hashed backup and undo. AI fill does not run without a local SAM 2.1 Small checkpoint, and it does not mark predictions as human keyframes.
+
+Install the library with `pip install -e .` (add `[gui]` or `[dev]` for PyQt6). Apply the patch with `patch -p1` on a clean `v4.0.0-beta.7` checkout. Do not commit weights.
 
 `python examples/run_demo.py` builds a 60-frame synthetic drone-like clip. On the 53 non-keyframes, smoothing at a 6 px limit raised mean IoU from 0.777 (jittered boxes) to 0.906 against the rendered box. Linear interpolation of the keyframes scored 0.824.
 
