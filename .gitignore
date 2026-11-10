@@ -1,0 +1,34 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+.env
+.env.*
+
+# Local runtime, model weights, and downloaded datasets. Never commit these.
+runtime/
+data/
+examples/synthetic/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+
+# Annotation transactions created while trying the tools.
+.temporal_smoothing_backups/
+.temporal_tracking_backups/
+.temporal_tracking/
+
+# Editor and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

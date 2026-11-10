@@ -1,0 +1,43 @@
+--- a/anylabeling/views/labeling/label_widget.py
++++ b/anylabeling/views/labeling/label_widget.py
+@@ -2234,6 +2234,23 @@
+         # )
+         self.auto_labeling_widget.hide()  # Hide by default
+         central_layout.addWidget(self.label_instruction)
++        # xal-temporal: interval smoothing and optional SAM2 gap filling.
++        temporal_bar = QHBoxLayout()
++        temporal_bar.setContentsMargins(0, 0, 0, 0)
++        self.temporal_smoothing_btn = QPushButton("区间平滑")
++        self.temporal_smoothing_btn.setToolTip(
++            "用人工关键帧约束平滑同一目标的矩形框；先预览，应用时自动备份，可整段撤销。"
++        )
++        self.temporal_smoothing_btn.clicked.connect(self.open_temporal_smoothing)
++        self.temporal_tracking_btn = QPushButton("AI 补齐")
++        self.temporal_tracking_btn.setToolTip(
++            "用少量人工关键帧跟踪同一目标；修一帧重算附近区间，先预览再应用，可撤销。"
++        )
++        self.temporal_tracking_btn.clicked.connect(self.open_temporal_tracking)
++        temporal_bar.addWidget(self.temporal_smoothing_btn)
++        temporal_bar.addWidget(self.temporal_tracking_btn)
++        temporal_bar.addStretch(1)
++        central_layout.addLayout(temporal_bar)
+         central_layout.addSpacing(5)
+         central_layout.addWidget(self.auto_labeling_widget)
+         central_layout.addWidget(scroll_area)
+@@ -2762,6 +2779,16 @@
+         )
+         utils.add_actions(self.menus.edit, actions + self.actions.editMenu)
+ 
++    def open_temporal_smoothing(self):
++        from xal_temporal.integration import open_temporal_smoothing
++
++        open_temporal_smoothing(self)
++
++    def open_temporal_tracking(self):
++        from xal_temporal.integration import open_temporal_tracking
++
++        open_temporal_tracking(self)
++
+     def set_dirty(self):
+         # Even if we autosave the file, we keep the ability to undo
+         self.actions.undo.setEnabled(self.canvas.is_shape_restorable)

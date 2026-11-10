@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=70.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xal-temporal"
+version = "0.1.0"
+description = "Interval smoothing and optional SAM2 gap filling for X-AnyLabeling video boxes"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "GPL-3.0-only" }
+authors = [{ name = "xal-temporal contributors" }]
+keywords = ["annotation", "tracking", "x-anylabeling", "sam2"]
+dependencies = [
+    "numpy>=1.26",
+    "pillow>=10",
+]
+
+[project.optional-dependencies]
+gui = ["PyQt6>=6.6"]
+sam2 = ["torch", "sam-2"]
+dev = ["pytest>=8", "PyQt6>=6.6"]
+
+[project.urls]
+Homepage = "https://github.com/CVHub520/X-AnyLabeling"
+"Upstream" = "https://github.com/CVHub520/X-AnyLabeling"
+
+[tool.setuptools.packages.find]
+include = ["xal_temporal*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "public_data: downloads DAVIS; not run in CI",
+]
+addopts = "-q"
