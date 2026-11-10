@@ -82,7 +82,7 @@ class TrackingTests(unittest.TestCase):
         before = [m.read_optional(p) for p in self.paths]
         real = m.atomic_write
         def fail(path, raw):
-            if Path(path) == self.paths[4]: raise OSError('simulated disk error')
+            if Path(path).resolve() == self.paths[4].resolve(): raise OSError('simulated disk error')
             real(path, raw)
         with patch.object(m, 'atomic_write', side_effect=fail):
             with self.assertRaises(OSError): m.apply_draft(self.rows, self.predictions, self.anchors, self.identity)

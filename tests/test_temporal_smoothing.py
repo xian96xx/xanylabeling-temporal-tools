@@ -56,7 +56,8 @@ class SmoothingTests(unittest.TestCase):
             before['shapes'][0]['points']=after['shapes'][0]['points']
             self.assertEqual(before,after)
         backup=m.apply_preview(rows)
-        self.assertEqual(m.latest_backup(self.root),backup)
+        # Windows temp paths may be the 8.3 short name or the long name.
+        self.assertEqual(m.latest_backup(self.root).resolve(), Path(backup).resolve())
         m.undo_preview(backup,self.root)
         self.assertEqual(original,[p.read_bytes() for p in self.paths])
         self.assertIsNone(m.latest_backup(self.root))
@@ -75,7 +76,7 @@ class SmoothingTests(unittest.TestCase):
     def test_failure_rolls_back(self):
         original=[p.read_bytes() for p in self.paths];actual=m.atomic_write
         def fail(path,raw):
-            if Path(path)==self.paths[3] and raw!=original[3]:raise OSError('simulated disk failure')
+            if Path(path).resolve()==self.paths[3].resolve() and raw!=original[3]:raise OSError('simulated disk failure')
             actual(path,raw)
         with patch.object(m,'atomic_write',side_effect=fail):
             with self.assertRaises(OSError):m.apply_preview(self.preview())
