@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from scripts.download_public_demo import link_or_copy
 from xal_temporal import tracking
+from xal_temporal.fsutil import link_or_copy
 from xal_temporal.sam2_worker import read_runtime_config
 
 
@@ -52,7 +52,7 @@ def test_link_or_copy_falls_back_to_hardlink_then_copy(tmp_path):
     dest.parent.mkdir()
 
     with patch.object(Path, "symlink_to", side_effect=OSError("WinError 1314")):
-        with patch("scripts.download_public_demo.os.link", side_effect=OSError("no hardlink")):
+        with patch("xal_temporal.fsutil.os.link", side_effect=OSError("no hardlink")):
             kind = link_or_copy(src, dest)
     assert kind == "copy"
     assert dest.read_bytes() == b"jpeg-bytes"

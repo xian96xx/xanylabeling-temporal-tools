@@ -26,8 +26,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import shutil
 import struct
 import sys
 import urllib.request
@@ -41,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from xal_temporal.fsutil import link_or_copy
 from xal_temporal.benchmark import (
     hold_previous,
     keyframe_indices,
@@ -197,25 +196,6 @@ def load_sequence(url, catalog, sequence, dest: Path):
     (seq_dir / "ground_truth.json").write_text(json.dumps(meta), encoding="utf-8")
     _write_xlabel(seq_dir, meta)
     return meta
-
-
-def link_or_copy(src: Path, dest: Path) -> str:
-    """Point dest at src. Symlink, then hardlink, then a full copy.
-
-    Windows without Developer Mode raises WinError 1314 on symlink.
-    """
-    src, dest = Path(src), Path(dest)
-    try:
-        dest.symlink_to(src)
-        return "symlink"
-    except OSError:
-        pass
-    try:
-        os.link(src, dest)
-        return "hardlink"
-    except OSError:
-        shutil.copyfile(src, dest)
-        return "copy"
 
 
 def _write_xlabel(seq_dir: Path, meta):
