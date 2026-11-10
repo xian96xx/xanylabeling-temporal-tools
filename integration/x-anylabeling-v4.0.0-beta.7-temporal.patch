@@ -2532,7 +2532,7 @@ diff -ruN a/anylabeling/views/labeling/temporal_tracking.py b/anylabeling/views/
 +    path = PROJECT_ROOT/'runtime/tracking_runtime.json'
 +    if not path.exists():
 +        raise ValueError('AI 运行环境尚未安装完成。')
-+    config = json.loads(path.read_text(encoding='utf-8'))
++    config = json.loads(path.read_text(encoding='utf-8-sig'))
 +    for key in ('python', 'checkpoint'):
 +        value = Path(config[key])
 +        config[key] = str((PROJECT_ROOT/value if not value.is_absolute() else value).resolve())
@@ -11774,7 +11774,7 @@ diff -ruN a/tools/temporal_tracking_worker.py b/tools/temporal_tracking_worker.p
 +    from tools.temporal_tracking_cache import TrackingChunkCache
 +    from tools.temporal_tracking_inspect import inspect_keyframe
 +
-+    config = json.loads((ROOT/'runtime/tracking_runtime.json').read_text(encoding='utf-8'))
++    config = json.loads((ROOT/'runtime/tracking_runtime.json').read_text(encoding='utf-8-sig'))
 +    checkpoint = Path(config['checkpoint'])
 +    if not checkpoint.is_absolute(): checkpoint = ROOT/checkpoint
 +    requested = os.environ.get('XANYLABELING_TRACKING_DEVICE', config.get('device', 'auto')).lower()

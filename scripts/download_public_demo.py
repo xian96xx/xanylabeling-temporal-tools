@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
 import struct
 import sys
 import urllib.request
@@ -197,6 +199,25 @@ def load_sequence(url, catalog, sequence, dest: Path):
     return meta
 
 
+def link_or_copy(src: Path, dest: Path) -> str:
+    """Point dest at src. Symlink, then hardlink, then a full copy.
+
+    Windows without Developer Mode raises WinError 1314 on symlink.
+    """
+    src, dest = Path(src), Path(dest)
+    try:
+        dest.symlink_to(src)
+        return "symlink"
+    except OSError:
+        pass
+    try:
+        os.link(src, dest)
+        return "hardlink"
+    except OSError:
+        shutil.copyfile(src, dest)
+        return "copy"
+
+
 def _write_xlabel(seq_dir: Path, meta):
     """Full GT JSON plus a sparse copy that keeps only every 10th frame."""
     width, height = meta["image_size"]
@@ -228,7 +249,7 @@ def _write_xlabel(seq_dir: Path, meta):
             # Sparse folder references the same frames; only keyframe JSON is written.
             target = sparse / name
             if not target.exists():
-                target.symlink_to(seq_dir / name)
+                link_or_copy(seq_dir / name, target)
             (sparse / f"{index:05d}.json").write_text(json.dumps(doc), encoding="utf-8")
 
 

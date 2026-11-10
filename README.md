@@ -93,7 +93,7 @@ python examples/run_demo.py
 | 区间平滑（上限 6 px） | 0.906 | 0.89 | 100% |
 | 库内插值，缺帧用上一关键帧填充 | 0.755 | 3.19 | 98.1% |
 
-非关键帧 53 帧。AI 补齐因未安装 SAM2 而跳过。这些数字来自本次 `examples/run_demo.py`，不是外推。
+非关键帧 53 帧。上表是 CPU 上的平滑，不是 SAM2。SAM2 的实测见下一节。
 
 ## 公开数据评测
 
@@ -120,7 +120,19 @@ DAVIS 组织者以 BSD 发布数据和代码；2017 challenge 页面同时把新
 
 协议：每 10 帧加最后一帧为关键帧，坐标等于真值。下表只统计**非关键帧**（各 35 帧）。`library_*` 调用的是 `xal_temporal.smoothing.refine_boxes`。hold-last 实验把缺失帧初始化成上一关键帧，上限设成图像长边（854 px），这大于对话框里 50 px 的滑块上限，所以它是库调用，不是界面默认值。去抖实验给非关键帧加 `N(0, 3px)` 噪声，再以强度 4、上限 8 px 平滑。
 
-SAM2：**未运行**。环境里没有 `torch` / `sam2`，脚本不下载权重。
+### SAM 2.1 GPU 实测
+
+下面是一次 Windows 真机运行，不是 CI。非关键帧；关键帧为每 10 帧加最后一帧，坐标用真值。模型加载 4.4 秒，未计入下表。每帧都得到框，IoU>0.5 全部为 100%。
+
+环境：RTX 4060 Laptop 8GB，驱动 610.62，Python 3.12.14，torch 2.11.0+cu128，SAM-2 1.0（`2b90b9f`），权重 `sam2.1_hiera_small.pt`，配置 `configs/sam2.1/sam2.1_hiera_s.yaml`。补丁里的 `tools/temporal_tracking_worker.py` 在常规模式下复现了相同数字。合成序列 53 帧写回后撤销，文件恢复。打过补丁的界面在 Windows 上启动，新控件都在；那些按钮没有点过。
+
+| 序列 | 非关键帧 | 线性插值 IoU | SAM2 常规 IoU | 中心误差 (px) | 时间 (s) | SAM2 旋翼 IoU | 中心误差 (px) | 时间 (s) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 合成机身 | 53 | 0.824 | 0.888 | 0.53 | 19.5 | 0.834 | 0.35 | 38.8 |
+| DAVIS car-shadow | 35 | 0.970 | 0.958 | 2.89 | 12.7 | 0.941 | 2.28 | 27.1 |
+| DAVIS motocross-jump | 35 | 0.772 | 0.939 | 6.57 | 12.7 | 0.883 | 16.4 | 28.2 |
+
+运动快时 SAM2 常规模式明显高于线性插值（motocross-jump 0.939 对 0.772）。运动慢时略低（car-shadow 0.958 对 0.970）。旋翼模式更慢，在这三段非无人机片段上也不更好。合成序列上旋翼中心误差更小，但 IoU 低于常规模式。
 
 | 序列 | 方法 | 平均 IoU | 中心误差 (px) | IoU>0.5 |
 | --- | --- | ---: | ---: | ---: |
@@ -172,6 +184,8 @@ Install the library with `pip install -e .` (add `[gui]` or `[dev]` for PyQt6). 
 
 `python examples/run_demo.py` builds a 60-frame synthetic drone-like clip. On the 53 non-keyframes, smoothing at a 6 px limit raised mean IoU from 0.777 (jittered boxes) to 0.906 against the rendered box. Linear interpolation of the keyframes scored 0.824.
 
-`python scripts/download_public_demo.py` fetches two DAVIS 2017 val clips (`car-shadow`, `motocross-jump`) by HTTP range, converts the largest consistent mask id to boxes, and scores non-keyframes. The dataset is not committed. CI skips it. SAM 2 was not run here (no torch, no weights). Holding the previous keyframe and then smoothing is worse than linear interpolation when the object moves (motocross-jump mean IoU 0.481 vs 0.772, and only 40% of frames with IoU>0.5). Smoothing helps when the boxes already exist and are slightly noisy and the motion is slow (`car-shadow`: 0.946 → 0.980). Full table and license notes are in the Chinese section above. Numbers are from one local run of that script, not a leaderboard claim.
+`python scripts/download_public_demo.py` fetches two DAVIS 2017 val clips (`car-shadow`, `motocross-jump`) by HTTP range, converts the largest consistent mask id to boxes, and scores non-keyframes. The dataset is not committed. CI skips that download. Holding the previous keyframe and then smoothing is worse than linear interpolation when the object moves (motocross-jump mean IoU 0.481 vs 0.772, and only 40% of frames with IoU>0.5). Smoothing helps when the boxes already exist and are slightly noisy and the motion is slow (`car-shadow`: 0.946 → 0.980).
+
+A separate Windows GPU run (RTX 4060 Laptop 8GB, driver 610.62, Python 3.12.14, torch 2.11.0+cu128, SAM-2 1.0 at `2b90b9f`, `sam2.1_hiera_small.pt`) filled every non-keyframe. Model load was 4.4 s. Linear IoU / SAM2 normal IoU, center error, time / rotor IoU, center error, time: synthetic 53 frames 0.824 / 0.888, 0.53 px, 19.5 s / 0.834, 0.35 px, 38.8 s; car-shadow 35 frames 0.970 / 0.958, 2.89 px, 12.7 s / 0.941, 2.28 px, 27.1 s; motocross-jump 35 frames 0.772 / 0.939, 6.57 px, 12.7 s / 0.883, 16.4 px, 28.2 s. IoU>0.5 was 100% in every cell. SAM2 beats linear interpolation on the fast clip and is slightly worse on the slow car. Rotor mode is slower and not better on these non-UAV clips. The patched worker in normal mode reproduced the same numbers. Writing 53 synthetic frames and undoing them checked out. The patched GUI opened on Windows with the new controls visible; those buttons were not clicked.
 
 Popular UAV benchmarks were not used because their licenses are non-commercial or unspecified. DAVIS is BSD, with the 2017 annotations also described as CC BY 4.0 by the challenge page.

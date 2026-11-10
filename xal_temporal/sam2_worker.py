@@ -22,6 +22,12 @@ def home():
     return Path(raw).expanduser().resolve() if raw else Path.cwd().resolve()
 
 
+def read_runtime_config(root):
+    """Load tracking_runtime.json. Accepts a UTF-8 BOM from Windows editors."""
+    path = Path(root) / 'runtime' / 'tracking_runtime.json'
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+
 def emit(kind, **data):
     print(json.dumps({'type': kind, **data}, ensure_ascii=False), flush=True)
 
@@ -38,7 +44,7 @@ def main():
     from xal_temporal.sam2_inspect import inspect_keyframe
 
     root = home()
-    config = json.loads((root/'runtime/tracking_runtime.json').read_text(encoding='utf-8'))
+    config = read_runtime_config(root)
     checkpoint = Path(config['checkpoint'])
     if not checkpoint.is_absolute(): checkpoint = root/checkpoint
     requested = os.environ.get('XANYLABELING_TRACKING_DEVICE', config.get('device', 'auto')).lower()

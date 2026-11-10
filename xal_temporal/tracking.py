@@ -461,7 +461,7 @@ def runtime_config():
     path = PROJECT_ROOT/'runtime/tracking_runtime.json'
     if not path.exists():
         raise ValueError('AI 运行环境尚未安装完成。')
-    config = json.loads(path.read_text(encoding='utf-8'))
+    config = json.loads(path.read_text(encoding='utf-8-sig'))
     for key in ('python', 'checkpoint'):
         value = Path(config[key])
         config[key] = str((PROJECT_ROOT/value if not value.is_absolute() else value).resolve())
